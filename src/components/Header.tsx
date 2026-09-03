@@ -1,11 +1,12 @@
 import React from 'react';
-import { UserAccount, GasSyncConfig, AppSettings } from '../types/inventory';
+import { UserAccount, GasSyncConfig, GitHubSyncConfig, AppSettings } from '../types/inventory';
 import { AppLogo } from './AppLogo';
 import { 
   QrCode, 
   RefreshCw, 
   CloudCheck, 
   FileSpreadsheet, 
+  FolderGit2,
   HelpCircle, 
   LogOut, 
   User as UserIcon, 
@@ -22,8 +23,10 @@ interface HeaderProps {
   onOpenQrScanner: () => void;
   onOpenGlobalSearch: () => void;
   onOpenGasSync: () => void;
+  onOpenGitHubSync?: () => void;
   onOpenGuide: () => void;
   gasConfig: GasSyncConfig;
+  githubConfig?: GitHubSyncConfig;
   onToggleSidebar: () => void;
   unreadNotificationsCount?: number;
 }
@@ -35,8 +38,10 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenQrScanner,
   onOpenGlobalSearch,
   onOpenGasSync,
+  onOpenGitHubSync,
   onOpenGuide,
   gasConfig,
+  githubConfig,
   onToggleSidebar,
   unreadNotificationsCount = 2,
 }) => {
@@ -151,6 +156,48 @@ export const Header: React.FC<HeaderProps> = ({
                   ? gasConfig.autoSyncEnabled
                     ? 'bg-emerald-500 animate-pulse'
                     : 'bg-blue-500'
+                  : 'bg-amber-500'
+              }`}
+            ></span>
+          </button>
+        )}
+
+        {/* GitHub Auto-Sync Indicator & Button */}
+        {isAdmin && onOpenGitHubSync && (
+          <button
+            type="button"
+            onClick={onOpenGitHubSync}
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-md text-xs font-semibold border transition-all cursor-pointer shadow-xs ${
+              githubConfig?.personalAccessToken
+                ? githubConfig.autoSyncEnabled
+                  ? 'bg-slate-900 text-white border-slate-700 hover:bg-slate-800'
+                  : 'bg-slate-100 text-slate-800 border-slate-300 hover:bg-slate-200'
+                : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100/80'
+            }`}
+            title={
+              githubConfig?.personalAccessToken
+                ? githubConfig.autoSyncEnabled
+                  ? `GitHub Auto-Sync Aktif (${githubConfig.owner}/${githubConfig.repo} - Branch: ${githubConfig.branch})`
+                  : 'GitHub Terhubung (Manual Sync)'
+                : 'Konfigurasi GitHub Auto-Sync'
+            }
+          >
+            <FolderGit2 className="w-4 h-4 text-blue-400" />
+            <span className="hidden lg:inline">
+              {githubConfig?.personalAccessToken
+                ? githubConfig.autoSyncEnabled
+                  ? 'GitHub Sync'
+                  : 'GitHub Manual'
+                : 'Setup GitHub'}
+            </span>
+            <span
+              className={`w-2 h-2 rounded-full ${
+                githubConfig?.personalAccessToken
+                  ? githubConfig.autoSyncEnabled
+                    ? githubConfig.lastSyncStatus === 'syncing'
+                      ? 'bg-blue-400 animate-ping'
+                      : 'bg-emerald-400 animate-pulse'
+                    : 'bg-blue-400'
                   : 'bg-amber-500'
               }`}
             ></span>

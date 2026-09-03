@@ -24,6 +24,7 @@ import {
   FileX,
   Flame,
   FileSpreadsheet,
+  FolderGit2,
   Settings,
   Users,
   ShieldCheck,
@@ -62,8 +63,9 @@ export type ActiveTab =
   | 'setting_user'
   | 'setting_hak_akses'
   | 'setting_aplikasi'
-  // GAS & Guide
+  // GAS & Guide & GitHub
   | 'gas_sync'
+  | 'github_sync'
   | 'petunjuk';
 
 interface SidebarProps {
@@ -591,9 +593,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
           </div>
 
-          {/* SPREADSHEET & PETUNJUK (ADMIN ONLY) */}
+          {/* SPREADSHEET & GITHUB & PETUNJUK (ADMIN ONLY) */}
           {isAdmin && (
             <div className="pt-2 border-t border-slate-800 space-y-1">
+              <button
+                type="button"
+                onClick={() => handleItemClick('github_sync')}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-md transition-all cursor-pointer text-xs ${
+                  activeTab === 'github_sync'
+                    ? 'bg-slate-800 text-blue-400 font-medium'
+                    : 'hover:bg-slate-800 text-emerald-400 font-medium'
+                }`}
+              >
+                <FolderGit2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="flex items-center gap-1.5 flex-1 justify-between truncate">
+                  <span className="truncate">Auto-Sync GitHub</span>
+                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-300 font-bold border border-blue-400/30 shrink-0">
+                    Real-time
+                  </span>
+                </span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => handleItemClick('gas_sync')}
@@ -603,7 +623,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     : 'hover:bg-slate-800 text-blue-400 font-medium'
                 }`}
               >
-                <Code className="w-3.5 h-3.5" />
+                <Code className="w-3.5 h-3.5 shrink-0" />
                 <span>Konektor Apps Script (Code.gs)</span>
               </button>
 

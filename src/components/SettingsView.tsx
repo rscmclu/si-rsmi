@@ -47,8 +47,11 @@ import {
   FolderArchive,
   FileCode,
   Globe,
-  ExternalLink
+  ExternalLink,
+  FolderGit2
 } from 'lucide-react';
+import { GitHubSyncModal } from './GitHubSyncModal';
+import { githubSyncService } from '../services/githubSyncService';
 
 interface SettingsViewProps {
   currentUser: UserAccount;
@@ -198,6 +201,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     };
     window.addEventListener('simbars:sync-status', handleSyncStatus);
     return () => window.removeEventListener('simbars:sync-status', handleSyncStatus);
+  }, []);
+
+  // GitHub Sync State & Listener
+  const [githubConfig, setGitHubConfig] = useState(() => dataStorage.getGitHubConfig());
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
+  const [isManualPushingGh, setIsManualPushingGh] = useState(false);
+  const [isManualPullingGh, setIsManualPullingGh] = useState(false);
+  const [ghFeedbackMsg, setGhFeedbackMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleGhStatus = (e: any) => {
+      if (e.detail) {
+        setGitHubConfig(e.detail);
+      }
+    };
+    window.addEventListener('simbars:github-sync-status', handleGhStatus);
+    return () => window.removeEventListener('simbars:github-sync-status', handleGhStatus);
   }, []);
 
   // Matriks Hak Akses State
@@ -1453,6 +1473,140 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       {activeTab === 'database' && isAdmin && (
         <div className="space-y-6">
           
+          {/* GITHUB AUTO-SYNC & REAL-TIME SYNC CARD */}
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-slate-900 text-white shadow-xs">
+                  <FolderGit2 className="w-5 h-5 text-blue-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-slate-900 text-sm">
+                      Auto-Sync Database ke GitHub (Real-time)
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-bold border border-blue-200">
+                      Real-time Event
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Sinkronisasi otomatis setiap ada perubahan data SIMBARS langsung dicommit ke repository GitHub sebagai file database JSON.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border flex items-center gap-1.5 ${
+                  githubConfig.personalAccessToken && githubConfig.owner && githubConfig.repo
+                    ? githubConfig.autoSyncEnabled
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                      : 'bg-blue-50 text-blue-800 border-blue-200'
+                    : 'bg-amber-50 text-amber-800 border-amber-300'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    githubConfig.personalAccessToken && githubConfig.owner && githubConfig.repo
+                      ? githubConfig.autoSyncEnabled
+                        ? 'bg-emerald-500 animate-pulse'
+                        : 'bg-blue-500'
+                      : 'bg-amber-500'
+                  }`}></span>
+                  <span>
+                    {githubConfig.personalAccessToken && githubConfig.owner && githubConfig.repo
+                      ? githubConfig.autoSyncEnabled
+                        ? 'Auto-Sync Aktif'
+                        : 'Manual Sync'
+                      : 'Belum Dikonfigurasi'}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsGitHubModalOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs cursor-pointer shadow-xs flex items-center gap-1.5 transition-colors"
+                >
+                  <FolderGit2 className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Konfigurasi & Log GitHub</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Status / Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-slate-500 text-[11px] block font-medium">Target Repository:</span>
+                <div className="font-mono font-bold text-slate-800 truncate mt-0.5">
+                  {githubConfig.owner && githubConfig.repo ? `${githubConfig.owner}/${githubConfig.repo}` : 'Belum diatur'}
+                </div>
+                <span className="text-[10px] text-slate-400">Branch: {githubConfig.branch || 'main'}</span>
+              </div>
+
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-slate-500 text-[11px] block font-medium">File Database:</span>
+                <div className="font-mono font-bold text-slate-800 truncate mt-0.5">
+                  {githubConfig.filePath || 'data/simbars-database.json'}
+                </div>
+                <span className="text-[10px] text-slate-400">
+                  Auto-Sync Perubahan: {githubConfig.autoSyncOnChange ? 'Aktif (Real-time)' : 'Non-aktif'}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <span className="text-slate-500 text-[11px] block font-medium">Sinkronisasi Terakhir:</span>
+                <div className="font-bold text-slate-800 truncate mt-0.5">
+                  {githubConfig.lastSyncTime ? new Date(githubConfig.lastSyncTime).toLocaleTimeString('id-ID') : 'Belum pernah'}
+                </div>
+                <span className="text-[10px] text-slate-400 truncate block">
+                  Status: {githubConfig.lastSyncMessage || 'Siap digunakan'}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick action buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={!githubConfig.personalAccessToken || isManualPushingGh}
+                  onClick={async () => {
+                    setIsManualPushingGh(true);
+                    setGhFeedbackMsg('Sedang mempush data ke GitHub...');
+                    const res = await githubSyncService.pushToGitHub(githubConfig);
+                    setIsManualPushingGh(false);
+                    setGhFeedbackMsg(res.success ? `✅ Berhasil: ${res.message}` : `❌ Gagal: ${res.message}`);
+                    setTimeout(() => setGhFeedbackMsg(null), 4000);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs cursor-pointer shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                >
+                  <ArrowUpFromLine className={`w-3.5 h-3.5 ${isManualPushingGh ? 'animate-bounce' : ''}`} />
+                  <span>{isManualPushingGh ? 'Mempush...' : 'Push ke GitHub Sekarang'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!githubConfig.personalAccessToken || isManualPullingGh}
+                  onClick={async () => {
+                    if (!confirm('Tarik data dari GitHub? Data lokal akan diperbarui dengan data dari GitHub.')) return;
+                    setIsManualPullingGh(true);
+                    setGhFeedbackMsg('Sedang menarik data dari GitHub...');
+                    const res = await githubSyncService.pullFromGitHub(githubConfig);
+                    setIsManualPullingGh(false);
+                    setGhFeedbackMsg(res.success ? `✅ Berhasil: ${res.message}` : `❌ Gagal: ${res.message}`);
+                    setTimeout(() => setGhFeedbackMsg(null), 4000);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs cursor-pointer shadow-xs flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                >
+                  <ArrowDownToLine className={`w-3.5 h-3.5 ${isManualPullingGh ? 'animate-bounce' : ''}`} />
+                  <span>{isManualPullingGh ? 'Menarik...' : 'Pull dari GitHub'}</span>
+                </button>
+              </div>
+
+              {ghFeedbackMsg && (
+                <div className="text-xs font-semibold px-2.5 py-1 rounded bg-slate-100 text-slate-800 border border-slate-200">
+                  {ghFeedbackMsg}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* GAS SYNC URL & AUTO-SYNC BOX */}
           <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs p-5 space-y-4">
             <div>
@@ -2109,6 +2263,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         apiKeySecret={gasConfig.apiKeySecret}
         errorMessage={guideErrorMessage}
         webAppUrl={gasConfig.webAppUrl || gasUrl}
+      />
+
+      {/* GITHUB AUTO-SYNC MODAL */}
+      <GitHubSyncModal
+        isOpen={isGitHubModalOpen}
+        onClose={() => setIsGitHubModalOpen(false)}
+        currentUser={currentUser}
       />
 
     </div>

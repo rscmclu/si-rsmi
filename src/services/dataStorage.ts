@@ -17,6 +17,7 @@ import {
   PelaksanaanPemusnahan,
   UserAccount,
   GasSyncConfig,
+  GitHubSyncConfig,
   RolePermissionsMatrix,
   AppSettings,
   AssetAuditLog,
@@ -70,6 +71,7 @@ const STORAGE_KEYS = {
   CURRENT_USER: 'simbars_current_user',
   ROLE_MATRIX: 'simbars_role_matrix',
   GAS_CONFIG: 'simbars_gas_config',
+  GITHUB_CONFIG: 'simbars_github_config',
   APP_SETTINGS: 'simbars_app_settings',
 };
 
@@ -96,7 +98,8 @@ function setStorage<T>(key: string, value: T): void {
     if (
       typeof window !== 'undefined' &&
       key !== STORAGE_KEYS.CURRENT_USER &&
-      key !== STORAGE_KEYS.GAS_CONFIG
+      key !== STORAGE_KEYS.GAS_CONFIG &&
+      key !== STORAGE_KEYS.GITHUB_CONFIG
     ) {
       window.dispatchEvent(
         new CustomEvent('simbars:data-changed', {
@@ -738,6 +741,23 @@ export const dataStorage = {
     const curr = dataStorage.getGasConfig();
     dataStorage.saveGasConfig({ ...curr, webAppUrl: url });
   },
+
+  // GitHub Auto-Sync Configuration & Real-Time Sync
+  getGitHubConfig: (): GitHubSyncConfig =>
+    getStorage(STORAGE_KEYS.GITHUB_CONFIG, {
+      owner: 'rscmclu',
+      repo: 'si-rsmi',
+      branch: 'main',
+      filePath: 'data/simbars-database.json',
+      personalAccessToken: '',
+      autoSyncEnabled: true,
+      autoSyncOnChange: true,
+      autoSyncIntervalMinutes: 5,
+      autoPullOnStartup: false,
+      lastSyncStatus: 'idle',
+      syncLogs: [],
+    }),
+  saveGitHubConfig: (config: GitHubSyncConfig) => setStorage(STORAGE_KEYS.GITHUB_CONFIG, config),
 
   // Import data fetched from Google Sheets API
   importFromGoogleSheetsData: (payload: any): { count: number; message: string } => {

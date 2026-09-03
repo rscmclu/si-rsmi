@@ -10,6 +10,7 @@ import {
 import { 
   UserAccount, 
   GasSyncConfig, 
+  GitHubSyncConfig,
   JenisInventaris, 
   KategoriInventaris, 
   MerkInventaris, 
@@ -21,6 +22,7 @@ import {
 } from './types/inventory';
 import { dataStorage } from './services/dataStorage';
 import { gasSyncService } from './services/gasSyncService';
+import { githubSyncService } from './services/githubSyncService';
 import { formatRupiah, formatAssetQrText } from './utils/formatters';
 
 // Layout & Views
@@ -41,6 +43,7 @@ import { GlobalSearchModal } from './components/GlobalSearchModal';
 import { AssetDetailModal } from './components/AssetDetailModal';
 import { BackupRestoreModal } from './components/BackupRestoreModal';
 import { GasUpdateGuideModal } from './components/GasUpdateGuideModal';
+import { GitHubSyncModal } from './components/GitHubSyncModal';
 
 // Modals
 import { 
@@ -93,6 +96,7 @@ export const TAB_PATH_MAP: Record<ActiveTab, string> = {
   setting_hak_akses: '/setting-hak-akses',
   setting_aplikasi: '/setting-aplikasi',
   gas_sync: '/gas-sync',
+  github_sync: '/github-sync',
   petunjuk: '/petunjuk',
 };
 
@@ -121,6 +125,7 @@ export const PATH_TAB_MAP: Record<string, ActiveTab> = {
   '/setting-hak-akses': 'setting_hak_akses',
   '/setting-aplikasi': 'setting_aplikasi',
   '/gas-sync': 'gas_sync',
+  '/github-sync': 'github_sync',
   '/petunjuk': 'petunjuk',
 };
 
@@ -143,6 +148,7 @@ function SimbarsApp() {
   // Global Modals
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
   const [isGasModalOpen, setIsGasModalOpen] = useState(false);
+  const [isGitHubModalOpen, setIsGitHubModalOpen] = useState(false);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
   const [searchNavContext, setSearchNavContext] = useState<{ assetId?: string; roomId?: string; categoryId?: string; search?: string } | null>(null);
   const [scannedAsset, setScannedAsset] = useState<InventarisRuangan | null>(null);
@@ -197,6 +203,9 @@ function SimbarsApp() {
   const [isGasGuideModalOpen, setIsGasGuideModalOpen] = useState(false);
   const [gasGuideErrorMessage, setGasGuideErrorMessage] = useState<string | undefined>(undefined);
 
+  // GitHub Sync Config state
+  const [githubConfig, setGitHubConfig] = useState<GitHubSyncConfig>(() => dataStorage.getGitHubConfig());
+
   // Synchronize gasUrlInput when gasConfig changes
   useEffect(() => {
     setGasUrlInput(gasConfig.webAppUrl);
@@ -204,29 +213,50 @@ function SimbarsApp() {
 
   // 1. Listen for background sync status updates and real-time data changes
   useEffect(() => {
-    const handleSyncStatus = (e: any) => {
+    const handleGasSyncStatus = (e: any) => {
       if (e.detail) {
         setGasConfig(e.detail);
       }
     };
 
-    const handleDataChanged = () => {
+    const handleGitHubSyncStatus = (e: any) => {
+      if (e.detail) {
+        setGitHubConfig(e.detail);
+      }
+    };
+
+    const handleDataChanged = (e: any) => {
+      // 1. Google Sheets Auto-Push
       const cfg = dataStorage.getGasConfig();
       if (cfg.webAppUrl && cfg.autoSyncEnabled && cfg.autoSyncOnChange) {
         gasSyncService.triggerAutoPush(cfg, 2500);
       }
+
+      // 2. GitHub Real-time Auto-Push
+      const ghCfg = dataStorage.getGitHubConfig();
+      if (
+        ghCfg.personalAccessToken &&
+        ghCfg.owner &&
+        ghCfg.repo &&
+        ghCfg.autoSyncEnabled &&
+        ghCfg.autoSyncOnChange
+      ) {
+        githubSyncService.triggerAutoPush(ghCfg, 3000, e?.detail?.key);
+      }
     };
 
-    window.addEventListener('simbars:sync-status', handleSyncStatus);
+    window.addEventListener('simbars:sync-status', handleGasSyncStatus);
+    window.addEventListener('simbars:github-sync-status', handleGitHubSyncStatus);
     window.addEventListener('simbars:data-changed', handleDataChanged);
 
     return () => {
-      window.removeEventListener('simbars:sync-status', handleSyncStatus);
+      window.removeEventListener('simbars:sync-status', handleGasSyncStatus);
+      window.removeEventListener('simbars:github-sync-status', handleGitHubSyncStatus);
       window.removeEventListener('simbars:data-changed', handleDataChanged);
     };
   }, []);
 
-  // 2. Periodic background auto-sync timer
+  // 2. Periodic background auto-sync timer for Google Sheets
   useEffect(() => {
     if (!gasConfig.webAppUrl || !gasConfig.autoSyncEnabled) return;
     const intervalMinutes = gasConfig.autoSyncIntervalMinutes || 5;
@@ -241,6 +271,53 @@ function SimbarsApp() {
 
     return () => clearInterval(timer);
   }, [gasConfig.webAppUrl, gasConfig.autoSyncEnabled, gasConfig.autoSyncIntervalMinutes]);
+
+  // 3. Periodic background auto-sync timer for GitHub
+  useEffect(() => {
+    if (
+      !githubConfig.personalAccessToken ||
+      !githubConfig.autoSyncEnabled ||
+      !githubConfig.owner ||
+      !githubConfig.repo
+    ) {
+      return;
+    }
+    const intervalMinutes = githubConfig.autoSyncIntervalMinutes || 5;
+    const intervalMs = Math.max(1, intervalMinutes) * 60 * 1000;
+
+    const timer = setInterval(async () => {
+      const currentGhCfg = dataStorage.getGitHubConfig();
+      if (
+        currentGhCfg.personalAccessToken &&
+        currentGhCfg.owner &&
+        currentGhCfg.repo &&
+        currentGhCfg.autoSyncEnabled
+      ) {
+        await githubSyncService.pushToGitHub(currentGhCfg, { isAutoSync: true });
+      }
+    }, intervalMs);
+
+    return () => clearInterval(timer);
+  }, [
+    githubConfig.personalAccessToken,
+    githubConfig.autoSyncEnabled,
+    githubConfig.autoSyncIntervalMinutes,
+    githubConfig.owner,
+    githubConfig.repo,
+  ]);
+
+  // 4. Auto-pull on startup if configured
+  useEffect(() => {
+    const ghCfg = dataStorage.getGitHubConfig();
+    if (
+      ghCfg.autoPullOnStartup &&
+      ghCfg.personalAccessToken &&
+      ghCfg.owner &&
+      ghCfg.repo
+    ) {
+      githubSyncService.pullFromGitHub(ghCfg);
+    }
+  }, []);
 
   // Protect admin-only tabs
   useEffect(() => {
@@ -488,10 +565,14 @@ function SimbarsApp() {
         onOpenGasSync={() => {
           if (isAdmin) setIsGasModalOpen(true);
         }}
+        onOpenGitHubSync={() => {
+          if (isAdmin) setIsGitHubModalOpen(true);
+        }}
         onOpenGuide={() => {
           if (isAdmin) handleSelectTab('petunjuk');
         }}
         gasConfig={gasConfig}
+        githubConfig={githubConfig}
         onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
       />
 
@@ -1136,6 +1217,20 @@ function SimbarsApp() {
         errorMessage={gasGuideErrorMessage}
         webAppUrl={gasConfig.webAppUrl}
       />
+
+      {/* GITHUB AUTO-SYNC MODAL */}
+      {currentUser && (
+        <GitHubSyncModal
+          isOpen={isGitHubModalOpen || (activeTab === 'github_sync' && isAdmin)}
+          onClose={() => {
+            setIsGitHubModalOpen(false);
+            if (activeTab === 'github_sync') {
+              handleSelectTab('dashboard');
+            }
+          }}
+          currentUser={currentUser}
+        />
+      )}
 
     </div>
   );

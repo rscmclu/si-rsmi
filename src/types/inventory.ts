@@ -410,6 +410,36 @@ export interface GasSyncConfig {
   lastSyncType?: 'push' | 'pull' | 'auto';
 }
 
+export interface GitHubSyncLog {
+  id: string;
+  timestamp: string;
+  type: 'push' | 'pull' | 'auto';
+  status: 'success' | 'error' | 'syncing';
+  message: string;
+  commitSha?: string;
+  commitUrl?: string;
+  itemsCount?: number;
+  changedKeys?: string[];
+}
+
+export interface GitHubSyncConfig {
+  owner: string;
+  repo: string;
+  branch: string;
+  filePath: string;
+  personalAccessToken: string;
+  autoSyncEnabled: boolean;
+  autoSyncOnChange: boolean;
+  autoSyncIntervalMinutes: number;
+  autoPullOnStartup?: boolean;
+  lastSyncTime?: string;
+  lastSyncStatus?: 'success' | 'error' | 'idle' | 'syncing';
+  lastSyncMessage?: string;
+  lastCommitSha?: string;
+  lastCommitUrl?: string;
+  syncLogs?: GitHubSyncLog[];
+}
+
 export type AuditLogActionType = 
   | 'REGISTRASI'
   | 'MUTASI_RUANGAN'
