@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   PRINT LAYOUT STYLES (CSS Print)
+   Otomatis menyembunyikan elemen UI dashboard, navigasi, dan menyiapkan 
+   tata letak halaman khusus cetak dokumen resmi Rumah Sakit
+   ========================================================================== */
+
+@media print {
+  /* 1. Sembunyikan semua elemen navigasi, header sistem, sidebar, tombol, filter, modal */
+  header,
+  aside,
+  nav,
+  button,
+  input,
+  select,
+  textarea,
+  .no-print,
+  .print\:hidden,
+  [role="dialog"],
+  .modal-backdrop,
+  .custom-scrollbar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* 2. Reset Layout Root & Margin Halaman */
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm 15mm 10mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 3. Maksimalkan Kontainer Utama */
+  main,
+  #root,
+  .print-container-full {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    left: 0 !important;
+    position: static !important;
+    box-shadow: none !important;
+  }
+
+  /* 4. Tampilkan Elemen Khusus Cetak */
+  .print\:block {
+    display: block !important;
+  }
+
+  .print\:grid {
+    display: grid !important;
+  }
+
+  .print\:flex {
+    display: flex !important;
+  }
+
+  .print\:table {
+    display: table !important;
+  }
+
+  /* 5. Pengaturan Border Tabel dan Pemotongan Halaman (Page Break) */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
+  .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* 6. Hilangkan bayangan & border rounded berlebih saat cetak */
+  .shadow-sm,
+  .shadow-md,
+  .shadow-lg,
+  .shadow-xl,
+  .shadow-2xl,
+  .shadow-xs {
+    box-shadow: none !important;
+  }
+
+  .rounded-xl,
+  .rounded-2xl,
+  .rounded-lg {
+    border-radius: 0 !important;
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "SIMBARS - Sistem Inventaris RS Medika Insani",
+  "description": "Sistem Manajemen Inventaris Barang dan Aset Rumah Sakit Medika Insani terintegrasi Google Spreadsheet & Google Apps Script.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

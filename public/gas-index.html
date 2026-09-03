@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIMBARS - Portal Google Apps Script (RS Medika Insani)</title>
+  <meta name="description" content="Portal Pengelolaan & Integrasi Google Apps Script SIMBARS RS Medika Insani.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          },
+          colors: {
+            hospital: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-50 text-slate-800 antialiased">
+  <!-- Top Navigation Bar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-extrabold text-slate-900 tracking-tight">SIMBARS GAS Portal</h1>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">v3.3.0</span>
+          </div>
+          <p class="text-[11px] text-slate-500 font-medium">IPSRS & Pengelola Barang Milik RS • RS Medika Insani</p>
+        </div>
+      </div>
+
+      <!-- Environment / Runtime Badge -->
+      <div class="flex items-center gap-3">
+        <div id="env-badge" class="px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-slate-100 text-slate-700 border border-slate-200">
+          <span class="w-2 h-2 rounded-full bg-slate-400 animate-pulse"></span>
+          <span id="env-status-text">Memeriksa Koneksi...</span>
+        </div>
+        <button id="btn-refresh" onclick="loadPortalData()" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors" title="Muat Ulang Data">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Toast Container -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <!-- Notice Banner if opened standalone -->
+    <div id="standalone-banner" class="hidden p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+          <strong class="font-bold">Mode Simulasi / Standalone Terdeteksi:</strong>
+          <p class="mt-0.5 text-amber-800">
+            Halaman ini sedang dibuka di luar Google Apps Script iframe (<code class="font-mono bg-amber-100/80 px-1 py-0.5 rounded">google.script.run</code> tidak aktif). Saat dipasang di Google Apps Script (Apps Script Editor &gt; Tambah File HTML &gt; <code>index.html</code>), seluruh aksi di bawah akan langsung mengeksekusi fungsi di Google Spreadsheet Anda.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top KPI Stat Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500">Status Web App</span>
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-xl font-bold text-slate-900" id="stat-status">Siap & Aktif</span>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-1" id="stat-version">Mesin Code.gs v3.3.0</p>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500">Google Spreadsheet</span>
+          <svg class="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zM7 7h10v2H7V7zm0 4h10v2H7v-2zm0 4h7v2H7v-2z"/>
+          </svg>
+        </div>
+        <div class="mt-2">
+          <span class="text-sm font-bold text-slate-900 block truncate" id="stat-ss-name">Memuat Nama...</span>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-1" id="stat-sheets-count">0 Sheet Terdeteksi</p>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500">Skema Standar</span>
+          <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">19 Tabel</span>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-xl font-bold text-slate-900" id="stat-tables-ready">19 / 19</span>
+          <span class="text-xs text-emerald-600 font-semibold">Tersedia</span>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-1">Master, DIR, Log, Mutu &amp; Aset</p>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-semibold text-slate-500">Protokol Sinkronisasi</span>
+          <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+        </div>
+        <div class="mt-2 flex items-baseline gap-2">
+          <span class="text-xl font-bold text-slate-900">Batch-Update</span>
+        </div>
+        <p class="text-[11px] text-slate-500 mt-1">Cepat &amp; Rendah Latensi</p>
+      </div>
+    </div>
+
+    <!-- Action Toolbar Hub -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+        <div>
+          <h2 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            <span>Pusat Kendali &amp; Pemeliharaan Database</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Jalankan aksi migrasi skema dan diagnosa langsung dari web interface ini.</p>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <button id="btn-migrate" onclick="runAutoMigrate()" class="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span>Auto-Migrasi Skema (19 Tabel)</span>
+          </button>
+          <button onclick="testConnectionRpc()" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer">
+            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>Tes Kesehatan API</span>
+          </button>
+          <button onclick="exportJsonData()" class="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer">
+            <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span>Ekspor Data JSON</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Execution Log / Report Box -->
+      <div id="execution-log" class="hidden mt-3 p-3 rounded-lg bg-slate-900 text-slate-200 font-mono text-xs overflow-x-auto">
+        <div class="flex items-center justify-between pb-1 mb-1 border-b border-slate-700 text-slate-400 text-[10px]">
+          <span>LOG EKSEKUSI SERVER</span>
+          <button onclick="document.getElementById('execution-log').classList.add('hidden')" class="hover:text-white">Tutup [x]</button>
+        </div>
+        <pre id="log-content" class="whitespace-pre-wrap leading-relaxed"></pre>
+      </div>
+    </div>
+
+    <!-- Live Asset Quick Search Section -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span>Pencarian Cepat Aset (Live Sheet Query)</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Cari aset inventaris langsung dari sheet <code class="font-mono text-blue-600">DATA_INVENTARIS_RUANG</code>.</p>
+        </div>
+
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <div class="relative flex-1 sm:w-72">
+            <input
+              type="text"
+              id="asset-search-input"
+              onkeyup="if(event.key==='Enter') searchAssets()"
+              placeholder="Cari ID, nama aset, ruang..."
+              class="w-full pl-9 pr-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-slate-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <button onclick="searchAssets()" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs cursor-pointer">
+            Cari
+          </button>
+        </div>
+      </div>
+
+      <!-- Search Results Table -->
+      <div class="overflow-x-auto border border-slate-100 rounded-lg">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+            <tr>
+              <th class="py-2.5 px-3">ID Barang</th>
+              <th class="py-2.5 px-3">Nama Barang / Aset</th>
+              <th class="py-2.5 px-3">Lokasi Ruang</th>
+              <th class="py-2.5 px-3">No Seri Pabrik</th>
+              <th class="py-2.5 px-3">Kondisi</th>
+              <th class="py-2.5 px-3">Status</th>
+              <th class="py-2.5 px-3 text-right">Harga Perolehan</th>
+            </tr>
+          </thead>
+          <tbody id="asset-results-body" class="divide-y divide-slate-100 text-slate-700">
+            <tr>
+              <td colspan="7" class="py-6 text-center text-slate-400">
+                Ketik kata kunci di atas lalu tekan enter atau klik tombol "Cari" untuk melihat data aset.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 19 Tables Overview Grid -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 4v16M15 4v16M4 10h16M4 15h16" />
+            </svg>
+            <span>Daftar 19 Tabel Standar Rumah Sakit</span>
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">Status ketersediaan sheet dan jumlah baris data di Google Spreadsheet saat ini.</p>
+        </div>
+        <span class="text-xs text-slate-500 font-medium" id="tables-count-badge">Memeriksa 19 Tabel...</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" id="tables-grid">
+        <!-- Will be dynamically populated by JS -->
+      </div>
+    </div>
+
+    <!-- API Reference & Connection Guide -->
+    <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs space-y-4">
+      <h2 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+        <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+        </svg>
+        <span>Referensi Parameter HTTP API SIMBARS</span>
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800">GET /exec?action=ping</span>
+            <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Health Check</span>
+          </div>
+          <p class="text-slate-500 text-[11px]">Memverifikasi konektivitas Web App, nama spreadsheet aktif, dan versi script.</p>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800">GET /exec?action=getAllData</span>
+            <span class="px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">Pull Database</span>
+          </div>
+          <p class="text-slate-500 text-[11px]">Mengunduh seluruh 19 tabel dari Google Spreadsheet dalam format JSON terstruktur.</p>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800">POST /exec (batchUpdate)</span>
+            <span class="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px] font-bold">Batch Push</span>
+          </div>
+          <p class="text-slate-500 text-[11px]">Mendorong perubahan data inventaris dari aplikasi SIMBARS dalam batch teroptimasi.</p>
+        </div>
+
+        <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-slate-800">POST /exec (autoUpdateSchema)</span>
+            <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">Auto Migrate</span>
+          </div>
+          <p class="text-slate-500 text-[11px]">Mendeteksi dan membuat sheet/kolom baru tanpa menghapus data yang sudah ada.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 mt-auto py-4 text-center text-xs text-slate-500">
+    <p>SIMBARS v3.3.0 &copy; 2025-2026 Rumah Sakit Medika Insani. Terintegrasi Google Apps Script &amp; Google Spreadsheet.</p>
+  </footer>
+
+  <!-- Script Logic -->
+  <script>
+    // 19 Standard Database Schema Definition
+    const SCHEMA_DEFINITIONS = [
+      { name: 'MASTER_JENIS', color: '#059669', headersCount: 4, desc: 'Master Jenis Inventaris' },
+      { name: 'MASTER_KATEGORI', color: '#0d9488', headersCount: 4, desc: 'Master Kategori Barang' },
+      { name: 'MASTER_MERK', color: '#0284c7', headersCount: 6, desc: 'Master Merk & Pabrikan' },
+      { name: 'MASTER_RUANG', color: '#2563eb', headersCount: 6, desc: 'Master Ruangan & Gedung' },
+      { name: 'MASTER_SUPPLIER', color: '#4f46e5', headersCount: 7, desc: 'Master Pemasok / Vendor' },
+      { name: 'DATA_INVENTARIS_RUANG', color: '#10b981', headersCount: 18, desc: 'Data Induk Aset & Foto DIR' },
+      { name: 'DATA_SIRKULASI_MUTASI', color: '#0891b2', headersCount: 13, desc: 'Riwayat Mutasi Antar Ruang' },
+      { name: 'DATA_AUDIT_LOGS', color: '#64748b', headersCount: 16, desc: 'Audit Trail Rekam Jejak' },
+      { name: 'KEGIATAN_PERMINTAAN_PERBAIKAN', color: '#e11d48', headersCount: 10, desc: 'Tiket Kerusakan Unit' },
+      { name: 'KEGIATAN_PERBAIKAN', color: '#ea580c', headersCount: 11, desc: 'Pelaksanaan Servis IPSRS' },
+      { name: 'KEGIATAN_PEMELIHARAAN_RUTIN', color: '#d97706', headersCount: 10, desc: 'Preventive Maintenance' },
+      { name: 'KEGIATAN_KALIBRASI', color: '#ca8a04', headersCount: 11, desc: 'Kalibrasi Berkala Alat Medis' },
+      { name: 'KEGIATAN_INSPEKSI_K3', color: '#16a34a', headersCount: 10, desc: 'Inspeksi Keselamatan K3' },
+      { name: 'LAPORAN_RESPON_15MENIT', color: '#9333ea', headersCount: 11, desc: 'Standar Mutu Respon 15 Mnt' },
+      { name: 'PENGADAAN_USULAN', color: '#4338ca', headersCount: 11, desc: 'Usulan Pengadaan Baru' },
+      { name: 'PENGADAAN_REALISASI', color: '#1d4ed8', headersCount: 13, desc: 'Realisasi & BAST Pengadaan' },
+      { name: 'PENGHAPUSAN_USULAN', color: '#b91c1c', headersCount: 10, desc: 'Usulan Afkir / Rusak Berat' },
+      { name: 'PENGHAPUSAN_BERITA_ACARA', color: '#991b1b', headersCount: 10, desc: 'Berita Acara Pemusnahan' },
+      { name: 'METADATA_SISTEM', color: '#334155', headersCount: 6, desc: 'Riwayat Sinkronisasi & Versi' }
+    ];
+
+    const isGasEnvironment = typeof google !== 'undefined' && google.script && google.script.run;
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `p-3.5 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 pointer-events-auto transition-all transform duration-200 ${
+        type === 'success' ? 'bg-emerald-600 text-white' :
+        type === 'error' ? 'bg-rose-600 text-white' : 'bg-slate-800 text-white'
+      }`;
+      toast.innerHTML = `
+        <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>${message}</span>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(10px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function renderTablesGrid(tablesData = null) {
+      const grid = document.getElementById('tables-grid');
+      grid.innerHTML = '';
+
+      SCHEMA_DEFINITIONS.forEach(def => {
+        const liveInfo = tablesData ? tablesData.find(t => t.name === def.name) : null;
+        const exists = liveInfo ? liveInfo.exists : true;
+        const rows = liveInfo ? liveInfo.rowCount : 0;
+
+        const card = document.createElement('div');
+        card.className = 'p-3 bg-white rounded-xl border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between space-y-2';
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="inline-block px-2 py-0.5 rounded text-[10px] font-bold text-white mb-1" style="background-color: ${def.color}">
+                ${def.name}
+              </span>
+              <p class="text-[11px] text-slate-500">${def.desc}</p>
+            </div>
+            <span class="px-1.5 py-0.5 rounded text-[9px] font-bold ${exists ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}">
+              ${exists ? 'Tersedia' : 'Belum Ada'}
+            </span>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-600 pt-2 border-t border-slate-100">
+            <span>${def.headersCount} Kolom</span>
+            <span class="font-bold text-slate-800">${rows} Baris Data</span>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      document.getElementById('tables-count-badge').textContent = `19 Tabel Terdaftar (${SCHEMA_DEFINITIONS.length} Skema)`;
+    }
+
+    function loadPortalData() {
+      const envBadge = document.getElementById('env-badge');
+      const envText = document.getElementById('env-status-text');
+
+      if (isGasEnvironment) {
+        envBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200';
+        envText.textContent = 'Terhubung ke Google Apps Script';
+
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.status === 'ok') {
+              document.getElementById('stat-ss-name').textContent = res.spreadsheetName || 'Spreadsheet Aktif';
+              document.getElementById('stat-sheets-count').textContent = `${res.totalSheets || 19} Sheet Terpasang`;
+              document.getElementById('stat-version').textContent = `Code.gs v${res.version || '3.3.0'}`;
+              renderTablesGrid(res.tables);
+              showToast('Data portal Google Apps Script berhasil disinkronkan.', 'success');
+            } else {
+              renderTablesGrid();
+            }
+          })
+          .withFailureHandler(function(err) {
+            showToast('Gagal memuat status: ' + err.toString(), 'error');
+            renderTablesGrid();
+          })
+          .getGasPortalData();
+      } else {
+        // Standalone browser mode
+        document.getElementById('standalone-banner').classList.remove('hidden');
+        envBadge.className = 'px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200';
+        envText.textContent = 'Mode Preview / Standalone';
+        document.getElementById('stat-ss-name').textContent = 'Spreadsheet SIMBARS (Preview)';
+        document.getElementById('stat-sheets-count').textContent = '19 Sheet Terdefinisi';
+        renderTablesGrid();
+      }
+    }
+
+    function runAutoMigrate() {
+      const btn = document.getElementById('btn-migrate');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `
+        <svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+        </svg>
+        <span>Menjalankan Migrasi...</span>
+      `;
+
+      if (isGasEnvironment) {
+        google.script.run
+          .withSuccessHandler(function(report) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            showToast('Auto-Migrasi 19 Tabel Selesai!', 'success');
+
+            const logBox = document.getElementById('execution-log');
+            const logContent = document.getElementById('log-content');
+            logBox.classList.remove('hidden');
+            logContent.textContent = JSON.stringify(report, null, 2);
+            loadPortalData();
+          })
+          .withFailureHandler(function(err) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+            showToast('Migrasi gagal: ' + err.toString(), 'error');
+          })
+          .autoMigrateDatabase();
+      } else {
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.innerHTML = originalText;
+          showToast('Simulasi: Perintah autoMigrateDatabase() telah dieksekusi.', 'success');
+          const logBox = document.getElementById('execution-log');
+          const logContent = document.getElementById('log-content');
+          logBox.classList.remove('hidden');
+          logContent.textContent = "== [SIMULASI] Laporan Auto-Migrasi Skema ==\n19 Sheet berhasil diverifikasi.\nKolom 'Foto Aset URL / Bukti' terpasang pada DATA_INVENTARIS_RUANG.\nSheet METADATA_SISTEM dan LAPORAN_RESPON_15MENIT aktif.";
+        }, 1000);
+      }
+    }
+
+    function testConnectionRpc() {
+      if (isGasEnvironment) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            showToast('Koneksi RPC Google Apps Script Responsif (v' + (res.version || '3.3.0') + ')', 'success');
+          })
+          .withFailureHandler(function(err) {
+            showToast('Koneksi terganggu: ' + err.toString(), 'error');
+          })
+          .getGasPortalData();
+      } else {
+        showToast('Koneksi RPC Lokal Standalone Aktif (OK)', 'success');
+      }
+    }
+
+    function searchAssets() {
+      const input = document.getElementById('asset-search-input');
+      const query = (input.value || '').trim();
+      const tbody = document.getElementById('asset-results-body');
+
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="py-6 text-center text-slate-500">
+            <div class="flex items-center justify-center gap-2">
+              <svg class="w-4 h-4 animate-spin text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+              </svg>
+              <span>Mencari aset di sheet DATA_INVENTARIS_RUANG...</span>
+            </div>
+          </td>
+        </tr>
+      `;
+
+      if (isGasEnvironment) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            renderSearchResults(res && res.items ? res.items : []);
+          })
+          .withFailureHandler(function(err) {
+            tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-rose-600 font-semibold">Gagal mencari aset: ${err.toString()}</td></tr>`;
+          })
+          .searchAssetItems(query);
+      } else {
+        // Fallback demo results for standalone preview
+        setTimeout(() => {
+          const sample = [
+            { id: 'ELE-MED-UGD-001', nama: 'Defibrillator Biphasic Portable', ruang: 'IGD Cito', serial: 'DF-90821-X', kondisi: 'BAIK', status: 'TERSEDIA', harga: 85000000 },
+            { id: 'ELE-MED-ICU-002', nama: 'Patient Monitor 7 Parameter', ruang: 'ICU Central', serial: 'PM-44102-M', kondisi: 'BAIK', status: 'TERSEDIA', harga: 45000000 },
+            { id: 'ELE-RAD-RDI-001', nama: 'Mobile Digital X-Ray System', ruang: 'Radiologi', serial: 'XR-77210-R', kondisi: 'RUSAK_RINGAN', status: 'DIPERBAIKI', harga: 380000000 }
+          ].filter(item => !query || item.nama.toLowerCase().includes(query.toLowerCase()) || item.id.toLowerCase().includes(query.toLowerCase()) || item.ruang.toLowerCase().includes(query.toLowerCase()));
+          renderSearchResults(sample);
+        }, 500);
+      }
+    }
+
+    function renderSearchResults(items) {
+      const tbody = document.getElementById('asset-results-body');
+      if (!items || items.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="py-6 text-center text-slate-400">
+              Tidak ada aset yang sesuai dengan kata kunci pencarian.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = items.map(item => `
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="py-2.5 px-3 font-mono font-bold text-slate-900">${item.id || '-'}</td>
+          <td class="py-2.5 px-3 font-medium text-slate-800">${item.nama || '-'}</td>
+          <td class="py-2.5 px-3 text-slate-600">${item.ruang || '-'}</td>
+          <td class="py-2.5 px-3 font-mono text-[11px] text-slate-500">${item.serial || '-'}</td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${
+              item.kondisi === 'BAIK' ? 'bg-emerald-100 text-emerald-800' :
+              item.kondisi === 'RUSAK_RINGAN' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800'
+            }">
+              ${item.kondisi || 'BAIK'}
+            </span>
+          </td>
+          <td class="py-2.5 px-3">
+            <span class="text-[11px] font-medium text-slate-700">${item.status || 'TERSEDIA'}</span>
+          </td>
+          <td class="py-2.5 px-3 text-right font-mono font-semibold text-slate-900">
+            ${Number(item.harga || 0).toLocaleString('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 })}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function exportJsonData() {
+      if (isGasEnvironment) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            const blob = new Blob([JSON.stringify(res, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `SIMBARS_Database_GAS_${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            showToast('File JSON berhasil diunduh.', 'success');
+          })
+          .fetchAllTablesData();
+      } else {
+        showToast('Ekspor JSON simulasi dijalankan.', 'info');
+      }
+    }
+
+    // Auto load on page start
+    window.addEventListener('DOMContentLoaded', loadPortalData);
+  </script>
+</body>
+</html>
