@@ -3,8 +3,8 @@
     "system": "SIMBARS",
     "version": "v2.5",
     "hospital": "RS Medika Insani",
-    "exportDate": "2026-09-07T08:55:14.859Z",
-    "exportTimestamp": 1788771314859,
+    "exportDate": "2026-09-07T08:56:18.853Z",
+    "exportTimestamp": 1788771378853,
     "exportedBy": "dr. H. Rizal Maulana, MARS",
     "appSubtitle": "Sistem Informasi Manajemen Inventaris & Aset Rumah Sakit",
     "stats": {
@@ -50,8 +50,8 @@
     "apiKeySecret": "RSMI-SIMBARS-SECURE-KEY-2025",
     "autoSyncIntervalMinutes": 1,
     "lastSyncStatus": "success",
-    "lastSyncTime": "2026-09-07T08:54:55.017Z",
-    "lastSyncMessage": "Batch update selesai: 19 tabel (0 baris) dalam 4 batch (17.2s)",
+    "lastSyncTime": "2026-09-07T08:55:57.493Z",
+    "lastSyncMessage": "Batch update selesai: 19 tabel (0 baris) dalam 4 batch (19.6s)",
     "autoSyncEnabled": true,
     "autoSyncOnChange": true,
     "lastSyncType": "push"
